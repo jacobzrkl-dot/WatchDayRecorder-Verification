@@ -8,6 +8,16 @@ spec.loader.exec_module(diagnostics)
 
 
 class DiagnosticAcceptanceTests(unittest.TestCase):
+    def test_remote_tree_checks_source_content_and_mode_but_ignores_readme(self):
+        tree = {'truncated': False, 'tree': [
+            {'path': 'Sources/App.swift', 'mode': '100644', 'type': 'blob', 'sha': 'abc'},
+            {'path': 'README.md', 'mode': '100644', 'type': 'blob', 'sha': 'different'}]}
+        self.assertEqual(diagnostics.relevant_tree_entries(tree), {'Sources/App.swift': ('100644', 'blob', 'abc')})
+
+    def test_truncated_remote_tree_cannot_establish_equality(self):
+        with self.assertRaises(ValueError):
+            diagnostics.relevant_tree_entries({'truncated': True, 'tree': []})
+
     def test_public_verification_target_does_not_change_source_origin(self):
         self.assertEqual(diagnostics.resolve_ci_repo(None, {'ci_repo': 'owner/public-checks'}, 'git@github.com:owner/private.git'), 'owner/public-checks')
         self.assertEqual(diagnostics.resolve_ci_repo(None, {}, 'https://github.com/owner/public-checks.git'), 'owner/public-checks')

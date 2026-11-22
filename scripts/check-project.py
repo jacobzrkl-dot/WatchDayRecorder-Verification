@@ -49,6 +49,19 @@ def resolve_ci_repo(explicit, config, origin):
     return value
 
 
+def relevant_tree_entries(tree):
+    if tree.get('truncated') is not False or not isinstance(tree.get('tree'), list):
+        raise ValueError('Incomplete remote tree; cannot verify source equality')
+    result = {}
+    for item in tree['tree']:
+        if not all(key in item for key in ('path', 'mode', 'type', 'sha')):
+            raise ValueError('Invalid remote tree entry')
+        path = item['path']
+        if item['type'] != 'tree' and any(path == root or path.startswith(root + '/') for root in RELEVANT):
+            result[path] = (item['mode'], item['type'], item['sha'])
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cloud', action='store_true', help='also verify GitHub macOS CI matches current inputs')
@@ -102,11 +115,20 @@ def main():
             return 'UNVERIFIED', 'Relevant local files differ from HEAD; cloud has not tested this working tree.\n' + changes
         runs = json.loads(run(['gh', 'run', 'list', '--repo', repo, '--workflow', 'apple-platform.yml',
                                '--branch', 'main', '--limit', '30', '--json', 'databaseId,headSha,status,conclusion,url']))
+        local_tree = {}
+        for record in run(['git', 'ls-tree', '-rz', 'HEAD', '--', *RELEVANT]).split('\0'):
+            if record:
+                metadata, path = record.split('\t', 1)
+                local_tree[path] = tuple(metadata.split())
 
         def same_inputs(sha):
-            # Unknown commit is not proof of equivalence. Never fetch/mutate automatically.
+            # Fast local comparison when commit objects are available. Otherwise
+            # read the public tree via API; no fetch or private history upload.
             result = subprocess.run(['git', 'diff', '--quiet', sha, 'HEAD', '--', *RELEVANT], cwd=ROOT, capture_output=True)
-            return result.returncode == 0
+            if result.returncode in (0, 1):
+                return result.returncode == 0
+            tree = json.loads(run(['gh', 'api', f'repos/{repo}/git/trees/{sha}?recursive=1']))
+            return relevant_tree_entries(tree) == local_tree
 
         selected = matching_run(runs, same_inputs)
         if not selected:
