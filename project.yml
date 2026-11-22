@@ -1,0 +1,100 @@
+name: WatchDayRecorder
+options:
+  bundleIdPrefix: com.example
+  minimumXcodeGenVersion: "2.46.0"
+  postGenCommand: >-
+    /usr/bin/sed -i '' -e 's|dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";|dstPath = "";|'
+    -e 's|dstSubfolderSpec = 16;|dstSubfolderSpec = 13;|'
+    WatchDayRecorder.xcodeproj/project.pbxproj
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+targets:
+  WatchDayRecorder:
+    type: application
+    platform: iOS
+    scheme:
+      testTargets:
+        - WatchDayRecorderTests
+    sources:
+      - path: Sources/Shared
+      - path: Sources/iOSApp
+    info:
+      path: Generated/iOS-Info.plist
+      properties:
+        CFBundleDisplayName: 全天录音
+        UILaunchScreen: {}
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UIBackgroundModes:
+          - audio
+    dependencies:
+      - target: WatchDayRecorderWatch
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.WatchDayRecorder
+        TARGETED_DEVICE_FAMILY: "1"
+  WatchDayRecorderWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: Sources/Shared
+      - path: Sources/WatchApp
+    info:
+      path: Generated/Watch-Info.plist
+      properties:
+        CFBundleDisplayName: 全天录音
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.example.WatchDayRecorder
+        WKWatchOnly: false
+        WKRunsIndependentlyOfCompanionApp: true
+        NSMicrophoneUsageDescription: 用于在 Apple Watch 上录制全天分段音频。
+        UIBackgroundModes:
+          - audio
+        CFBundleURLTypes:
+          - CFBundleURLName: com.example.WatchDayRecorder.quickrecord
+            CFBundleURLSchemes:
+              - watchdayrecorder
+    dependencies:
+      - target: QuickRecordWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.WatchDayRecorder.watchkitapp
+        TARGETED_DEVICE_FAMILY: "4"
+  QuickRecordWidget:
+    type: app-extension
+    platform: watchOS
+    sources:
+      - path: Sources/WatchWidget
+      - path: Sources/Shared/AppRoute.swift
+    info:
+      path: Generated/WatchWidget-Info.plist
+      properties:
+        CFBundleDisplayName: 一键录音
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.WatchDayRecorder.watchkitapp.widget
+        APPLICATION_EXTENSION_API_ONLY: true
+        SKIP_INSTALL: true
+        TARGETED_DEVICE_FAMILY: "4"
+  WatchDayRecorderTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: WatchDayRecorder
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.WatchDayRecorderTests
+        GENERATE_INFOPLIST_FILE: true
