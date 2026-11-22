@@ -36,15 +36,16 @@ jobs:
           IOS_SIMULATOR_ID: ${{ steps.verify.outputs.ios_simulator }}
           ARTIFACT_DIRECTORY: ${{ steps.verify.outputs.artifacts }}
         run: bash scripts/capture-simulators.sh "$IOS_SIMULATOR_ID" "$ARTIFACT_DIRECTORY" 2>&1 | tee "$ARTIFACT_DIRECTORY/ui-capture.log"
-      - name: Retain build and test evidence
+      - name: Summarize verification without artifact storage
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: apple-platform-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/WatchDayRecorderVerify/*.log
-            ${{ runner.temp }}/WatchDayRecorderVerify/*.xcresult
-            ${{ runner.temp }}/WatchDayRecorderVerify/test-summary.json
-            ${{ runner.temp }}/WatchDayRecorderVerify/*.png
-          if-no-files-found: warn
-          retention-days: 14
+        shell: bash
+        env:
+          ARTIFACT_DIRECTORY: ${{ steps.verify.outputs.artifacts }}
+        run: |
+          printf '%s\n' '## Verification evidence' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'No build artifacts or caches are uploaded. See job logs for builds and XCTest results.' >> "$GITHUB_STEP_SUMMARY"
+          if [[ -n "$ARTIFACT_DIRECTORY" && -f "$ARTIFACT_DIRECTORY/test-summary.json" ]]; then
+            printf '\n```json\n' >> "$GITHUB_STEP_SUMMARY"
+            cat "$ARTIFACT_DIRECTORY/test-summary.json" >> "$GITHUB_STEP_SUMMARY"
+            printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
+          fi
